@@ -1,0 +1,56 @@
+mads 2.1.5 build 3 (21 Feb 22)
+Source: strings.asm
+     1 = 0346			putchar_ptr = $346      ; CONSTANT: putchar_ptr = $346 (OS character output vector address)
+     2 = 02F0			csrhinh     = $2F0                      ; CONSTANT: csrhinh = $2F0 (OS cursor visible/hidden control address)        
+     3 = 0054			rowcrs      = $54                       ; CONSTANT: rowcrs = $54 (OS zero page address that controls cursor row)
+     4 = 0055			colcrs      = $55                       ; CONSTANT: colcrs = $55 (OS zero page address that controls cursor column)
+     5 = 0030			offset_to_char = $30                    ; Offset from integer literal to ATASCII character equivalent of the number
+     6
+     7 				        org $2000                       ; place the following code at memory address $2000
+     8
+     9
+    10 				        .proc main                      ; declare procedure named "main", begin its scope
+    11
+    12 FFFF> 2000-204C> A9 01 +         mva #1 csrhinh
+    13 2005 A9 06 85 54		        mva #6 rowcrs
+    14 2009 A9 0A 85 55		        mva #10 colcrs
+    15
+    16 200D A9 31		        lda #$31
+    17 200F 20 15 20		        jsr putchar
+    18
+    19 2012			stop:
+    20 2012 4C 12 20		        jmp stop                        ; GOTO stop                   (infinite loop = program halts here)
+    21
+    22
+    23 				; print a character
+    24 				; Assumptions
+    25 				; 1. the character is in register A
+    26 				; 2. the character has been converted to ATASCII
+    27
+    28 2015			        .proc putchar
+    29 2015 AA			        tax             ; X = A                       (save character from A into X because A is about to be clobbered)
+    30 2016 AD 47 03		        lda putchar_ptr+1 ; A = memory[$347]          (load high byte of OS print routine address)
+    31 2019 48			        pha             ; push A onto stack            (high byte on stack, will be popped second by rts)
+    32 201A AD 46 03		        lda putchar_ptr ; A = memory[$346]            (load low byte of OS print routine address)
+    33 201D 48			        pha             ; push A onto stack            (low byte on stack, will be popped first by rts)
+    34 201E 8A			        txa             ; A = X                       (restore original character back into A because OS print routine expects character value in A)
+    35 201F 60			        rts             ; RETURN                      (pops OS address from stack and jumps there, OS prints character in A, then returns to main)
+    36 				        .endp           ; end of putchar procedure
+    37
+    38 				; data section (reminded me of COBOL)
+    39
+    40 2020			        .local string1
+    41 2020 48 45 4C 4C 4F 20 +         .byte 'HELLO FROM STRING ONE!'
+    42 				        .endl
+    43
+    44 2036			        .local string2
+    45 2036 41 4E 44 20 54 48 +         .byte 'AND THIS IS STRING TWO!'
+    46 				        .endl
+    47
+    48 				        .endp                           ; end of main procedure
+    49
+    50 				; =====================================================================
+    51 				; ENTRY POINT
+    52 				; =====================================================================
+    53
+    54 02E0-02E1> 00 20		        run main                        ; set Atari run address to main (auto-execute when program loads)
