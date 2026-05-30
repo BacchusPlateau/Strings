@@ -11,12 +11,48 @@ strptr_hi   = $84                       ; high byte of string address
 
         .proc main                      ; declare procedure named "main", begin its scope
 
-        mva #1 csrhinh
-        mva #6 rowcrs
-        mva #10 colcrs
+        mva #1 csrhinh                  ; hide the cursor
+        mva #6 rowcrs                   ; set output row
+        mva #10 colcrs                  ; set output column
+        
+        mva #<string1 strptr_lo         ; low byte of string1 address
+        mva #>string1 strptr_hi         ; high byte o f string1 address
+        jsr print_string                ; print the string
 
-        lda #$31
-        jsr putchar
+        mva #7 rowcrs                   ; move row output pointer down 1
+        mva #10 colcrs                  ; move col output pointer back at 10
+
+        mva #<string2 strptr_lo         ; print second string
+        mva #>string2 strptr_hi
+        jsr print_string
+
+        jmp stop
+
+; print a string
+; Assumptions
+; strptr_lo = low address of the string
+; strptr_hi = high address of the string
+;       together we have a 16-bit address of the string
+
+; Y = index of current character to process, starts at 0
+
+        .proc print_string
+        ldy #0
+loop:
+        lda (strptr_lo),y               ; with an offset of Y bytes, grab the byte at the 16-bit address
+        cmp #0                          ; test if we found the 0 string terminator: A == 0?   
+        beq exit                        ; if true, branch to exit
+        tya                             ; A = Y
+        pha                             ; push A onto the stack
+        lda (strptr_lo),y               ; re-fetch current byte of string
+        jsr putchar                     ; call putchar to write a character out
+        pla                             ; A = pop stack
+        tay                             ; Y = A
+        iny                             ; Y = Y + 1
+        jmp loop                        ; GOTO loop
+exit:
+        rts                             ; exit subroutine
+        .endp
 
 stop:
         jmp stop                        ; GOTO stop                   (infinite loop = program halts here)
