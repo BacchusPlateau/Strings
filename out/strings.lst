@@ -30,65 +30,68 @@ Source: strings.asm
     28
     29 202B 4C 44 20		        jmp stop
     30
-    31 				; print a string
+    31 202E			        icl 'routines.asm'              ; include routines.asm
+Source: routines.asm
+     1 				; print a string
+     2 				; Assumptions
+     3 				; strptr_lo = low address of the string
+     4 				; strptr_hi = high address of the string
+     5 				;       together we have a 16-bit address of the string
+     6
+     7 				; Y = index of current character to process, starts at 0
+     8
+     9 202E			        .proc print_string
+    10 202E A0 00		        ldy #0
+    11 2030			loop:
+    12 2030 B1 83		        lda (strptr_lo),y               ; with an offset of Y bytes, grab the byte at the 16-bit address
+    13 2032 C9 00		        cmp #0                          ; test if we found the 0 string terminator: A == 0?   
+    14 2034 F0 0D		        beq exit                        ; if true, branch to exit
+    15 2036 98			        tya                             ; A = Y
+    16 2037 48			        pha                             ; push A onto the stack
+    17 2038 B1 83		        lda (strptr_lo),y               ; re-fetch current byte of string
+    18 203A 20 47 20		        jsr putchar                     ; call putchar to write a character out
+    19 203D 68			        pla                             ; A = pop stack
+    20 203E A8			        tay                             ; Y = A
+    21 203F C8			        iny                             ; Y = Y + 1
+    22 2040 4C 30 20		        jmp loop                        ; GOTO loop
+    23 2043			exit:
+    24 2043 60			        rts                             ; exit subroutine
+    25 				        .endp
+    26
+    27 2044			stop:
+    28 2044 4C 44 20		        jmp stop                        ; GOTO stop                   (infinite loop = program halts here)
+    29
+    30
+    31 				; print a character
     32 				; Assumptions
-    33 				; strptr_lo = low address of the string
-    34 				; strptr_hi = high address of the string
-    35 				;       together we have a 16-bit address of the string
+    33 				; 1. the character is in register A
+    34 				; 2. the character has been converted to ATASCII
+    35 				; 3. before calling, save values of X and Y registers
     36
-    37 				; Y = index of current character to process, starts at 0
+    37 2047			        .proc putchar
+    38 2047 AA			        tax             ; X = A                       (save character from A into X because A is about to be clobbered)
+    39 2048 AD 47 03		        lda putchar_ptr+1 ; A = memory[$347]          (load high byte of OS print routine address)
+    40 204B 48			        pha             ; push A onto stack            (high byte on stack, will be popped second by rts)
+    41 204C AD 46 03		        lda putchar_ptr ; A = memory[$346]            (load low byte of OS print routine address)
+    42 204F 48			        pha             ; push A onto stack            (low byte on stack, will be popped first by rts)
+    43 2050 8A			        txa             ; A = X                       (restore original character back into A because OS print routine expects character value in A)
+    44 2051 60			        rts             ; RETURN                      (pops OS address from stack and jumps there, OS prints character in A, then returns to main)
+    45 				        .endp           ; end of putchar procedure
+    32
+    33 				; data section (reminded me of COBOL)
+    34
+    35 2052			        .local string1
+    36 2052 48 45 4C 4C 4F 20 +         .byte 'HELLO FROM STRING ONE!',0
+    37 				        .endl
     38
-    39 202E			        .proc print_string
-    40 202E A0 00		        ldy #0
-    41 2030			loop:
-    42 2030 B1 83		        lda (strptr_lo),y               ; with an offset of Y bytes, grab the byte at the 16-bit address
-    43 2032 C9 00		        cmp #0                          ; test if we found the 0 string terminator: A == 0?   
-    44 2034 F0 0D		        beq exit                        ; if true, branch to exit
-    45 2036 98			        tya                             ; A = Y
-    46 2037 48			        pha                             ; push A onto the stack
-    47 2038 B1 83		        lda (strptr_lo),y               ; re-fetch current byte of string
-    48 203A 20 47 20		        jsr putchar                     ; call putchar to write a character out
-    49 203D 68			        pla                             ; A = pop stack
-    50 203E A8			        tay                             ; Y = A
-    51 203F C8			        iny                             ; Y = Y + 1
-    52 2040 4C 30 20		        jmp loop                        ; GOTO loop
-    53 2043			exit:
-    54 2043 60			        rts                             ; exit subroutine
-    55 				        .endp
-    56
-    57 2044			stop:
-    58 2044 4C 44 20		        jmp stop                        ; GOTO stop                   (infinite loop = program halts here)
-    59
-    60
-    61 				; print a character
-    62 				; Assumptions
-    63 				; 1. the character is in register A
-    64 				; 2. the character has been converted to ATASCII
-    65
-    66 2047			        .proc putchar
-    67 2047 AA			        tax             ; X = A                       (save character from A into X because A is about to be clobbered)
-    68 2048 AD 47 03		        lda putchar_ptr+1 ; A = memory[$347]          (load high byte of OS print routine address)
-    69 204B 48			        pha             ; push A onto stack            (high byte on stack, will be popped second by rts)
-    70 204C AD 46 03		        lda putchar_ptr ; A = memory[$346]            (load low byte of OS print routine address)
-    71 204F 48			        pha             ; push A onto stack            (low byte on stack, will be popped first by rts)
-    72 2050 8A			        txa             ; A = X                       (restore original character back into A because OS print routine expects character value in A)
-    73 2051 60			        rts             ; RETURN                      (pops OS address from stack and jumps there, OS prints character in A, then returns to main)
-    74 				        .endp           ; end of putchar procedure
-    75
-    76 				; data section (reminded me of COBOL)
-    77
-    78 2052			        .local string1
-    79 2052 48 45 4C 4C 4F 20 +         .byte 'HELLO FROM STRING ONE!',0
-    80 				        .endl
-    81
-    82 2069			        .local string2
-    83 2069 41 4E 44 20 54 48 +         .byte 'AND THIS IS STRING TWO!',0
-    84 				        .endl
-    85
-    86 				        .endp                           ; end of main procedure
-    87
-    88 				; =====================================================================
-    89 				; ENTRY POINT
-    90 				; =====================================================================
-    91
-    92 02E0-02E1> 00 20		        run main                        ; set Atari run address to main (auto-execute when program loads)
+    39 2069			        .local string2
+    40 2069 41 4E 44 20 54 48 +         .byte 'AND THIS IS STRING TWO!',0
+    41 				        .endl
+    42
+    43 				        .endp                           ; end of main procedure
+    44
+    45 				; =====================================================================
+    46 				; ENTRY POINT
+    47 				; =====================================================================
+    48
+    49 02E0-02E1> 00 20		        run main                        ; set Atari run address to main (auto-execute when program loads)
